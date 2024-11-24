@@ -27,3 +27,5 @@ Extend your page!
 ## Share Your Ideas!
 Don't forget to share your idea!
 
+## If anyone wants to support
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/miltonbala)
