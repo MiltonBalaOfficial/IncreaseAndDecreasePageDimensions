@@ -9,12 +9,12 @@ Extend your page! Now you can increase/decrease the page dimension for a single 
      *Note: The `AppData` folder may be hidden.*
    - `~/.config/xournalpp/plugins` on Linux or MacOS
 
-1. **Place the icons** () in:
+1. **Place the icons** (`provided icons(if any)`) in:
    - `C:\Users\<user>\AppData\Local\share\icons\hicolor\scalable\actions` on Windows,
    - `~/.local/share/icons/hicolor/scalable/actions/` on Linux or MacOS
 
 2. **In the Xournal++ app**:
-  Open menu `Edit > Toolbars > Customize`. You will find the copied icons in the `Plugins` section. Place them at a suitable location in the toolbar. (make sure the version of your Xournalapp support Plugin icons)
+  Open menu `View > Toolbars > Customize`(Stable version) or `Edit > Toolbars > Customize` (Nightly version). You will find the copied icons in the `Plugins` section. Place them at a suitable location in the toolbar. (make sure the version of your Xournalapp support Plugin icons)
 
 3. **Use the plugin** as needed
 
@@ -29,7 +29,10 @@ Extend your page! Now you can increase/decrease the page dimension for a single 
 Don't forget to share your ideas!
 
 ## If you want to code yourself
-If you want to code yourself and if you are beginner then I recommend you to work with the `IncreasePageSize(for beginner)` file, it dose the same thing.
+
+Currently Increase/decrease value is in points, you can change it to cm and also page%wise. To do so, open `ChangePageDimension.lua` follow the instruction there, its done! Enjoy!
+
+If you want to code yourself and if you are beginner then I recommend you to work with the `IncreasePageSize(for beginner)` file.
 
 There is an extra file `IncreaseProportionally (you may try something new)` for getting space in all direction (will not work with the PDFs), you can give a try.
 
