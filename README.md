@@ -14,7 +14,7 @@ Extend your page! Now you can increase/decrease the page dimension for a single 
    - `~/.local/share/icons/hicolor/scalable/actions/` on Linux or MacOS
 
 2. **In the Xournal++ app**:
-  Open menu `View > Toolbars > Customize`(Stable version) or `Edit > Toolbars > Customize` (Nightly version). You will find the copied icons in the `Plugins` section. Place them at a suitable location in the toolbar. (make sure the version of your Xournalapp support Plugin icons)
+  Open menu `Edit > Toolbars > Customize`. You will find the copied icons in the `Plugins` section. Place them at a suitable location in the toolbar. (make sure the version of your Xournalapp support Plugin icons)
 
 3. **Use the plugin** as needed
 
