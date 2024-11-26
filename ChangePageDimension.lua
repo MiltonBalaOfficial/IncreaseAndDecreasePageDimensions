@@ -345,8 +345,10 @@ function toggleDocumentBasedAdjustment()
     file, err = io.open(configFilePath, "w")
     file:write(table.concat(lines, "\n") .. "\n")
     file:close()
+
+-- Toggle complete message
     app.msgbox(toggleMessage, {[1] = "Yes", [2] = "No"})--This works on older version of Xournalapp
-    --app.openDialog(toggleMessage, {[1] = "OK"}) -- Toggle complete message
+    --app.openDialog(toggleMessage, {[1] = "OK"}) -- This is for newer versions of xournalapp
 end
 
 -- Function to toggle the boolean value of wantFillEmptySpace in the config file
@@ -385,8 +387,10 @@ function toggleWantFillEmptySpace()
     file, err = io.open(configFilePath, "w")
     file:write(table.concat(lines, "\n") .. "\n")
     file:close()
+
+-- Toggle complete message
     app.msgbox(toggleMessage, {[1] = "Yes", [2] = "No"}) --This works on older version of Xournalapp
-    --app.openDialog(toggleMessage, {[1] = "OK"}) -- Toggle complete message
+    --app.openDialog(toggleMessage, {[1] = "OK"}) -- This is for newer versions of xournalapp
 end
 
 --This is a "Just Ready for service" code, not refined, code duplication can be removed, having not enough time.

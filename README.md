@@ -40,7 +40,7 @@ Don't forget to give your feedback and share your ideas!
 
 ## If you want to code yourself
 
-Currently Increase/decrease value is in points, you can change it to cm. To do so, open `ChangePageDimension.lua` follow the instruction there, its done! Enjoy!
+Currently Increase/decrease value is in points, you can change it to cm. To do so, open `page_adjust_config.lua` follow the instruction there, its done! Enjoy!
 
 There is an extra file `IncreaseProportionally (you may try something new)` for getting space in all direction (will not work with the PDFs), you can give a try.
 
