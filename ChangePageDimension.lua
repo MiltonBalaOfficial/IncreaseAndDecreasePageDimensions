@@ -1,5 +1,11 @@
+local shapes_dict, sep, sourcePath
+
 -- Register all Toolbar actions and initialize all UI stuff
 function initUi()
+    -- Getting the source folder Path (The plugin folder-path)
+    sep = package.config:sub(1, 1) -- path separator depends on OS
+    sourcePath = debug.getinfo(1).source:match("@?(.*" .. sep .. ")")
+
     local actions = {{
         menu = "Increase Right",
         callback = "increaseSizeRight",
@@ -49,15 +55,31 @@ function initUi()
     for _, action in ipairs(actions) do
         app.registerUi(action)
     end
+    app.registerUi({ -- For toggling Document Based Adjustment
+        menu = "Toggle Document Based Adjustment",
+        callback = "toggleDocumentBasedAdjustment",
+        toolbarId = "toggleDocumentBasedAdjustment",
+        iconName = "TogglePercentage_cm"
+    })
+    app.registerUi({ -- For toggling Document Based Adjustment
+        menu = "Toggle Fill the empty space",
+        callback = "toggleWantFillEmptySpace",
+        toolbarId = "fillEmptySpace",
+        iconName = "ToggleFillEmpty"
+    })
 end
 
--- Step size for page adjustments
-local adjustmentStep = 71 -- Default in points (pt), if you set `useCentimeters` to `true` then it will be 71 cm.
-local useCentimeters = false -- If you want to put the value in cm then Set it `true` to switch to cm-based adjustments.
-local cmToPointFactor = 28.3465 -- 1 cm = 28.3465 pt
-local documentBasedAdjustment = false -- If you want "Current document-based" adjustments then set it `true`. (Currently it is set to increase by 100% and decrease by 50%)
-local documentBasedAdjustmentFactorIncrease = 1 -- For 100% increase
-local documentBasedAdjustmentFactorDecrease = 0.5 -- For 50% decrease (It mimics undoAction)
+-- Load the configuration from a separate file
+local config = require("page_adjust_config")
+
+-- Access the configuration variables using the `config` table
+local adjustmentStep = config.adjustmentStep
+local useCentimeters = config.useCentimeters
+local cmToPointFactor = config.cmToPointFactor
+local documentBasedAdjustment = config.documentBasedAdjustment
+local documentBasedAdjustmentFactorIncrease = config.documentBasedAdjustmentFactorIncrease
+local documentBasedAdjustmentFactorDecrease = config.documentBasedAdjustmentFactorDecrease
+local wantFillEmptySpace = config.wantFillEmptySpace
 
 -- Function to get the step size for increasing the width
 local function getStepSizeIncreaseWidth(forAllPages)
@@ -173,7 +195,7 @@ end
 -- @param amountHeight: Change in page height
 -- @param forAllPages: If true, apply the change to all pages; otherwise, only the current page
 
-function adjustPageSize(amountWidth, amountHeight, forAllPages)
+function adjustPageSize(amountWidth, amountHeight, forAllPages, wantFill)
     local docStructure = app.getDocumentStructure()
 
     -- Determine which pages to process
@@ -190,37 +212,183 @@ function adjustPageSize(amountWidth, amountHeight, forAllPages)
         if forAllPages then
             app.setCurrentPage(p)
         end -- Set page if processing all pages
-
-        app.setPageSize(width + amountWidth, height + amountHeight)
-
+        if wantFill then
+            workingLayerInfo()
+            app.setPageSize(width + amountWidth, height + amountHeight)
+            fillEmptySpace()
+            else
+            app.setPageSize(width + amountWidth, height + amountHeight)
+            end 
     end
 end
 
+
 -- Individual action functions
 function increaseSizeRight()
-    adjustPageSize(getStepSizeIncreaseWidth(), 0, false)
+    adjustPageSize(getStepSizeIncreaseWidth(), 0, false, wantFillEmptySpace)
 end
 function decreaseSizeRight()
-    adjustPageSize(-getStepSizeDecreaseWidth(), 0, false)
+    adjustPageSize(-getStepSizeDecreaseWidth(), 0, false, wantFillEmptySpace)
 end
 function increaseSizeDown()
-    adjustPageSize(0, getStepSizeIncreaseHeight(), false)
+    adjustPageSize(0, getStepSizeIncreaseHeight(), false, wantFillEmptySpace)
 end
 function decreaseSizeDown()
-    adjustPageSize(0, -getStepSizeDecreaseHeight(), false)
+    adjustPageSize(0, -getStepSizeDecreaseHeight(), false, wantFillEmptySpace)
 end
 
 -- All-pages action functions
 function increaseSizeRightAll()
-    adjustPageSize(getStepSizeIncreaseWidth(), 0, true)
+        adjustPageSize(getStepSizeIncreaseWidth(true), 0, true, wantFillEmptySpace)
 end
 function decreaseSizeRightAll()
-    adjustPageSize(-getStepSizeDecreaseWidth(), 0, true)
+    adjustPageSize(-getStepSizeDecreaseWidth(true), 0, true, wantFillEmptySpace)
 end
 function increaseSizeDownAll()
-    adjustPageSize(0, getStepSizeIncreaseHeight(), true)
+    adjustPageSize(0, getStepSizeIncreaseHeight(true), true, wantFillEmptySpace)
 end
 function decreaseSizeDownAll()
-    adjustPageSize(0, -getStepSizeDecreaseHeight(), true)
+    adjustPageSize(0, -getStepSizeDecreaseHeight(true), true, wantFillEmptySpace)
 end
+
+-- Declare global variables
+widthInitial = nil
+heightInitial = nil
+workingLayer = nil
+
+function workingLayerInfo()
+    local docStructureInitial = app.getDocumentStructure()
+    local pageInitial = docStructureInitial["pages"][docStructureInitial["currentPage"]] -- Get the initial page
+    workingLayer = pageInitial["currentLayer"] --Get the working layer, after inserting the filled box, have to make the layer current again
+
+    -- Get page dimensions before increasing
+    widthInitial = pageInitial["pageWidth"]
+    heightInitial = pageInitial["pageHeight"]
+end
+
+-- Callback for inserting filled stroke over the empty space
+function fillEmptySpace()
+    local docStructureFinal = app.getDocumentStructure()
+    local pageFinal = docStructureFinal["pages"][docStructureFinal["currentPage"]] -- Get the final page
+    -- Get page dimensions after increasing
+    local widthFinal = pageFinal["pageWidth"]
+    local heightFinal = pageFinal["pageHeight"]
+    
+    local activeColor = app.getToolInfo("pen")["color"] --Take the color for the filled box from pen color
+
+    local filledBoxRight = { -- fill the empty space rightwards
+        x = {widthInitial, widthFinal, widthFinal, widthInitial, widthInitial},
+        y = {0, 0, heightFinal, heightFinal, 0},
+        width = 2.26,
+        fill = 255,
+        tool = "pen",
+        color = activeColor,
+    }
+    local filledBoxBottom = { -- fill the empty space rightwards
+    x = {0, widthFinal, widthFinal, 0, 0},
+    y = {heightInitial, heightInitial, heightFinal, heightFinal, heightInitial},
+    width = 2.26,
+    fill = 255,
+    tool = "pen",
+    color = activeColor,
+}
+    app.setCurrentLayer(1, false) --make the 1st layer as current layer to ensure the filled box remain on 1st layer always
+
+    -- adding the stroke for filled box
+    app.addStrokes { strokes = { filledBoxRight, filledBoxBottom, allowUndoRedoAction = "grouped" }}
+    app.refreshPage()
+
+    if workingLayer == 1 then -- If only one layer is present then create a layer and then set the new layer as current layer
+        app.uiAction({action = "ACTION_NEW_LAYER" })
+        app.setCurrentLayer(2, false)
+    else
+        app.setCurrentLayer(workingLayer, false) --If more than one layer is present then the previously working layer become current layer again
+    end
+
+end
+
+
+
+-- Function to toggle the boolean value of documentBasedAdjustment in the config file
+function toggleDocumentBasedAdjustment()
+    local configFilePath = sourcePath .. "page_adjust_config.lua" -- Path to the config file
+    local lines = {}
+
+    -- Read the config file
+    local file, err = io.open(configFilePath, "r")
+
+    -- Read all lines of the file into the lines table
+    for line in file:lines() do
+        table.insert(lines, line)
+    end
+    file:close()
+
+    -- Iterate through the lines to find and toggle the documentBasedAdjustment value
+    local updated = false
+    for i, line in ipairs(lines) do
+        if line:match("config.documentBasedAdjustment%s*=%s*(%a+)") then
+            -- Toggle the boolean value
+            local currentValue = line:match("config.documentBasedAdjustment%s*=%s*(%a+)")
+            local newValue = (currentValue == "true") and "false" or "true"
+            lines[i] = line:gsub(currentValue, newValue)
+            updated = true
+            if newValue == "true" then
+                toggleMessage = "% wise adjustment is activated, please restart the app"
+            else
+                toggleMessage = "cm based adjustment is activated, please restart the app"
+            end
+            break
+        end
+    end
+
+    -- Write the updated content back to the file
+    file, err = io.open(configFilePath, "w")
+    file:write(table.concat(lines, "\n") .. "\n")
+    file:close()
+    app.msgbox(toggleMessage, {[1] = "Yes", [2] = "No"})--This works on older version of Xournalapp
+    --app.openDialog(toggleMessage, {[1] = "OK"}) -- Toggle complete message
+end
+
+-- Function to toggle the boolean value of wantFillEmptySpace in the config file
+function toggleWantFillEmptySpace()
+    local configFilePath = sourcePath .. "page_adjust_config.lua" -- Path to the config file
+    local lines = {}
+
+    -- Read the config file
+    local file, err = io.open(configFilePath, "r")
+
+    -- Read all lines of the file into the lines table
+    for line in file:lines() do
+        table.insert(lines, line)
+    end
+    file:close()
+
+    -- Iterate through the lines to find and toggle the wantFillEmptySpace value
+    local updated = false
+    for i, line in ipairs(lines) do
+        if line:match("config.wantFillEmptySpace%s*=%s*(%a+)") then
+            -- Toggle the boolean value
+            local currentValue = line:match("config.wantFillEmptySpace%s*=%s*(%a+)")
+            local newValue = (currentValue == "true") and "false" or "true"
+            lines[i] = line:gsub(currentValue, newValue)
+            updated = true
+            if newValue == "true" then
+                toggleMessage = "Fill for Empty space is activated, please restart the app"
+            else
+                toggleMessage = "Fill for Empty space is deactivated, please restart the app"
+            end
+            break
+        end
+    end
+
+    -- Write the updated content back to the file
+    file, err = io.open(configFilePath, "w")
+    file:write(table.concat(lines, "\n") .. "\n")
+    file:close()
+    app.msgbox(toggleMessage, {[1] = "Yes", [2] = "No"}) --This works on older version of Xournalapp
+    --app.openDialog(toggleMessage, {[1] = "OK"}) -- Toggle complete message
+end
+
+--This is a "Just Ready for service" code, not refined, code duplication can be removed, having not enough time.
+--If anyone refine it, please share the code!
 
