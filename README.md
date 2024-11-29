@@ -26,7 +26,7 @@ Extend your page! Now you can increase/decrease the page dimensions for a single
 3. If you want to toggle between `%-based value` and `cm based value` for increasing the dimensions, just click on the `Toggle 'Adjustment Type' [%-based/cm-based]` menu or icon.
 4. For the documents having pdf background, if the dimensions are increased then empty space is created. You can fill the space with a color as the pdf background color. To do so  - 
   
-    (i) First, click on `Toggle 'Fill Empty Space' [ON/OFF]` menu or icon to toggle between `Set 'Fill Empty Space' Off` and `Set 'Fill Empty Space' On`, a message will be shown, then restart the app.
+    (i) First, click on `Toggle 'Fill Empty Space' [ON/OFF]` menu or icon to toggle between `Set 'Fill Empty Space' Off` and `Set 'Fill Empty Space' On`, a message will be shown.
     
     (ii) Next, change the `pen` tool color as your desired color. (The plugin will pick the `pen` color to fill the empty space) Use a `color picker` app to pick the color value from the pdf background for fine match.
 
