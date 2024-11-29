@@ -6,8 +6,8 @@ function initUi()
     sep = package.config:sub(1, 1) -- path separator depends on OS
     sourcePath = debug.getinfo(1).source:match("@?(.*" .. sep .. ")")
 
-    toggleMenuNameBothAdjustment() -- for getting the menu name based upon the toggle state
-    
+    updateSettings() -- load the config file
+
     local actions = {{
         menu = "Increase Right",
         callback = "increaseSizeRight",
@@ -58,30 +58,41 @@ function initUi()
         app.registerUi(action)
     end
     app.registerUi({ -- For toggling Document Based Adjustment
-        menu = toggleMenuCmPercent,--"Toggle Document Based Adjustment",
+        menu = "Toggle 'Adjustment Type' [%-based/cm-based]",
         callback = "toggleDocumentBasedAdjustment",
         toolbarId = "toggleDocumentBasedAdjustment",
         iconName = "TogglePercentage_cm"
     })
     app.registerUi({ -- For toggling Document Based Adjustment
-        menu = toggleMenuFillEmpty,
+        menu = "Toggle 'Fill Empty Space' [ON/OFF]",    
         callback = "toggleWantFillEmptySpace",
         toolbarId = "fillEmptySpace",
         iconName = "ToggleFillEmpty"
     })
 end
 
--- Load the configuration from a separate file
-local config = require("page_adjust_config")
+-- Function to load the configuration
+function loadConfig()
+    local configFilePath = sourcePath .. "page_adjust_config.lua" -- Path to the config file
+    local config = dofile(configFilePath) -- Execute the file and return the config table
+    return config -- the config file must have return config at the bottom.
+end
 
--- Access the configuration variables using the `config` table
-local adjustmentStep = config.adjustmentStep
-local useCentimeters = config.useCentimeters
-local cmToPointFactor = config.cmToPointFactor
-local documentBasedAdjustment = config.documentBasedAdjustment
-local documentBasedAdjustmentFactorIncrease = config.documentBasedAdjustmentFactorIncrease
-local documentBasedAdjustmentFactorDecrease = config.documentBasedAdjustmentFactorDecrease
-local wantFillEmptySpace = config.wantFillEmptySpace
+
+-- Example of using the configuration
+function updateSettings()
+    -- Load the configuration dynamically
+    local config = loadConfig()
+
+    -- Access the configuration variables using the `config` table
+    adjustmentStep = config.adjustmentStep
+    useCentimeters = config.useCentimeters
+    cmToPointFactor = config.cmToPointFactor
+    documentBasedAdjustment = config.documentBasedAdjustment
+    documentBasedAdjustmentFactorIncrease = config.documentBasedAdjustmentFactorIncrease
+    documentBasedAdjustmentFactorDecrease = config.documentBasedAdjustmentFactorDecrease
+    wantFillEmptySpace = config.wantFillEmptySpace
+end
 
 -- Function to get the step size for increasing the width
 local function getStepSizeIncreaseWidth(forAllPages)
@@ -241,7 +252,7 @@ end
 
 -- All-pages action functions
 function increaseSizeRightAll()
-        adjustPageSize(getStepSizeIncreaseWidth(true), 0, true, wantFillEmptySpace)
+    adjustPageSize(getStepSizeIncreaseWidth(true), 0, true, wantFillEmptySpace)
 end
 function decreaseSizeRightAll()
     adjustPageSize(-getStepSizeDecreaseWidth(true), 0, true, wantFillEmptySpace)
@@ -352,9 +363,9 @@ function toggleDocumentBasedAdjustment()
             lines[i] = line:gsub(currentValue, newValue)
             updated = true
             if newValue == "true" then
-                toggleMessage = "Adjustment Type is now set to  [%-based]. Please restart the app"
+                toggleMessage = "Adjustment Type is now set to  [%-based]"
             else
-                toggleMessage = "Adjustment Type is now set to [cm-based]. Please restart the app"
+                toggleMessage = "Adjustment Type is now set to [cm-based]"
             end
             break
         end
@@ -366,8 +377,9 @@ function toggleDocumentBasedAdjustment()
     file:close()
 
 -- Toggle complete message
-    app.msgbox(toggleMessage, {[1] = "Yes", [2] = "No"})--This works on older version of Xournalapp
+    app.msgbox(toggleMessage, {[1] = "OK"})--This works on older version of Xournalapp
     --app.openDialog(toggleMessage, {[1] = "OK"}) -- This is for newer versions of xournalapp
+    updateSettings() -- reload the config file
 end
 
 -- Function to toggle the boolean value of wantFillEmptySpace in the config file
@@ -394,9 +406,9 @@ function toggleWantFillEmptySpace()
             lines[i] = line:gsub(currentValue, newValue)
             updated = true
             if newValue == "true" then
-                toggleMessage = "'Fill Empty Space' is now set [on]. Please restart the app"
+                toggleMessage = "'Fill Empty Space' is now set [on]"
             else
-                toggleMessage = "'Fill Empty Space' is now set [Off]. Please restart the app"
+                toggleMessage = "'Fill Empty Space' is now set [Off]"
             end
             break
         end
@@ -408,52 +420,9 @@ function toggleWantFillEmptySpace()
     file:close()
 
 -- Toggle complete message
-    app.msgbox(toggleMessage, {[1] = "Yes", [2] = "No"}) --This works on older version of Xournalapp
+    app.msgbox(toggleMessage, {[1] = "OK"}) --This works on older version of Xournalapp
     --app.openDialog(toggleMessage, {[1] = "OK"}) -- This is for newer versions of xournalapp
-end
-
-
--- toggles the menu name for the two types of adjustments
-toggleMenuCmPercent = nill 
-toggleMenuFillEmpty = nill
-function toggleMenuNameBothAdjustment()
-    local configFilePath = sourcePath .. "page_adjust_config.lua" -- Path to the config file
-    local lines = {}
-
-    -- Read the config file
-    local file, err = io.open(configFilePath, "r")
-
-    -- Read all lines of the file into the lines table
-    for line in file:lines() do
-        table.insert(lines, line)
-    end
-    file:close()
-
-    -- Iterate through the lines to find and toggle the documentBasedAdjustment value
-    for i, line in ipairs(lines) do
-        if line:match("config.documentBasedAdjustment%s*=%s*(%a+)") then
-            -- Toggle the boolean value
-            local currentValueDocumentBasedAdjustment = line:match("config.documentBasedAdjustment%s*=%s*(%a+)")
-            -- For changing the menu based upon toggle state
-            if currentValueDocumentBasedAdjustment =="true" then
-                toggleMenuCmPercent = "Set 'Adjustment Type' to cm-based"
-            else
-                toggleMenuCmPercent = "Set 'Adjustment Type' to %-based"
-            end
-        end
-    end
-    for i, line in ipairs(lines) do
-        if line:match("config.wantFillEmptySpace%s*=%s*(%a+)") then
-            -- Toggle the boolean value
-            local currentValueWantFillEmptySpace = line:match("config.wantFillEmptySpace%s*=%s*(%a+)")
-            -- For changing the menu based upon toggle state
-            if currentValueWantFillEmptySpace =="true" then
-                toggleMenuFillEmpty = "Set 'Fill Empty Space' Off"
-            else
-                toggleMenuFillEmpty = "Set 'Fill Empty Space' On"
-            end
-        end
-    end
+    updateSettings() -- reload the config file
 end
 
 --This is a "Just Ready for service" code, not refined, code duplication can be removed, having not enough time.
