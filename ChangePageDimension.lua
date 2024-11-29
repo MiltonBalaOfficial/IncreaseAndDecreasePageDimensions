@@ -275,27 +275,58 @@ function fillEmptySpace()
     local heightFinal = pageFinal["pageHeight"]
     
     local activeColor = app.getToolInfo("pen")["color"] --Take the color for the filled box from pen color
-
-    local filledBoxRight = { -- fill the empty space rightwards
-        x = {widthInitial, widthFinal, widthFinal, widthInitial, widthInitial},
-        y = {0, 0, heightFinal, heightFinal, 0},
-        width = 2.26,
-        fill = 255,
-        tool = "pen",
-        color = activeColor,
-    }
-    local filledBoxBottom = { -- fill the empty space rightwards
-    x = {0, widthFinal, widthFinal, 0, 0},
-    y = {heightInitial, heightInitial, heightFinal, heightFinal, heightInitial},
-    width = 2.26,
+    
+    local filledBoxRight = nill
+if widthFinal > widthInitial then
+    filledBoxRight = { -- fill the empty space rightwards
+    x = {widthInitial, widthFinal, widthFinal, widthInitial, widthInitial},
+    y = {0, 0, heightFinal, heightFinal, 0},
+    width = 0.5, -- if you see any gap between two successive increase then increase the value
     fill = 255,
     tool = "pen",
     color = activeColor,
 }
+end
+
+    local filledBoxBottom = nill
+if heightFinal > heightInitial then
+    filledBoxBottom = { -- fill the empty space rightwards
+    x = {0, widthFinal, widthFinal, 0, 0},
+    y = {heightInitial, heightInitial, heightFinal, heightFinal, heightInitial},
+    width = 0.5, -- if you see any gap between two successive increase then increase the value
+    fill = 255,
+    tool = "pen",
+    color = activeColor,
+    }
+end
+
+--    local filledBoxRight = { -- fill the empty space rightwards
+--        x = {widthInitial, widthFinal, widthFinal, widthInitial, widthInitial},
+--        y = {0, 0, heightFinal, heightFinal, 0},
+--        width = 20,
+--        fill = 255,
+--        tool = "pen",
+--        color = activeColor,
+--    }
+--    local filledBoxBottom = { -- fill the empty space rightwards
+--    x = {0, widthFinal, widthFinal, 0, 0},
+--    y = {heightInitial, heightInitial, heightFinal, heightFinal, heightInitial},
+--    width = 20,
+--    fill = 255,
+--    tool = "pen",
+--    color = activeColor,
+--    }
     app.setCurrentLayer(1, false) --make the 1st layer as current layer to ensure the filled box remain on 1st layer always
 
     -- adding the stroke for filled box
-    app.addStrokes { strokes = { filledBoxRight, filledBoxBottom, allowUndoRedoAction = "grouped" }}
+    if filledBoxRight and filledBoxBottom then
+        app.addStrokes { strokes = { filledBoxRight, filledBoxBottom, allowUndoRedoAction = "grouped" }}
+    elseif filledBoxBottom then
+        app.addStrokes { strokes = { filledBoxBottom, allowUndoRedoAction = "grouped" }}
+    elseif filledBoxRight then
+        app.addStrokes { strokes = { filledBoxRight, allowUndoRedoAction = "grouped" }}
+    end
+
     app.refreshPage()
 
     if workingLayer == 1 then -- If only one layer is present then create a layer and then set the new layer as current layer
