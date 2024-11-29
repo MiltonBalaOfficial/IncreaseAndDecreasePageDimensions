@@ -6,6 +6,8 @@ function initUi()
     sep = package.config:sub(1, 1) -- path separator depends on OS
     sourcePath = debug.getinfo(1).source:match("@?(.*" .. sep .. ")")
 
+    toggleMenuNameBothAdjustment() -- for getting the menu name based upon the toggle state
+    
     local actions = {{
         menu = "Increase Right",
         callback = "increaseSizeRight",
@@ -56,13 +58,13 @@ function initUi()
         app.registerUi(action)
     end
     app.registerUi({ -- For toggling Document Based Adjustment
-        menu = "Toggle Document Based Adjustment",
+        menu = toggleMenuCmPercent,--"Toggle Document Based Adjustment",
         callback = "toggleDocumentBasedAdjustment",
         toolbarId = "toggleDocumentBasedAdjustment",
         iconName = "TogglePercentage_cm"
     })
     app.registerUi({ -- For toggling Document Based Adjustment
-        menu = "Toggle Fill the empty space",
+        menu = toggleMenuFillEmpty,
         callback = "toggleWantFillEmptySpace",
         toolbarId = "fillEmptySpace",
         iconName = "ToggleFillEmpty"
@@ -281,7 +283,7 @@ if widthFinal > widthInitial then
     filledBoxRight = { -- fill the empty space rightwards
     x = {widthInitial, widthFinal, widthFinal, widthInitial, widthInitial},
     y = {0, 0, heightFinal, heightFinal, 0},
-    width = 0.5, -- if you see any gap between two successive increase then increase the value
+    width = 2, -- if you see any gap between two successive increase then increase the value
     fill = 255,
     tool = "pen",
     color = activeColor,
@@ -293,29 +295,13 @@ if heightFinal > heightInitial then
     filledBoxBottom = { -- fill the empty space rightwards
     x = {0, widthFinal, widthFinal, 0, 0},
     y = {heightInitial, heightInitial, heightFinal, heightFinal, heightInitial},
-    width = 0.5, -- if you see any gap between two successive increase then increase the value
+    width = 2, -- if you see any gap between two successive increase then increase the value
     fill = 255,
     tool = "pen",
     color = activeColor,
     }
 end
 
---    local filledBoxRight = { -- fill the empty space rightwards
---        x = {widthInitial, widthFinal, widthFinal, widthInitial, widthInitial},
---        y = {0, 0, heightFinal, heightFinal, 0},
---        width = 20,
---        fill = 255,
---        tool = "pen",
---        color = activeColor,
---    }
---    local filledBoxBottom = { -- fill the empty space rightwards
---    x = {0, widthFinal, widthFinal, 0, 0},
---    y = {heightInitial, heightInitial, heightFinal, heightFinal, heightInitial},
---    width = 20,
---    fill = 255,
---    tool = "pen",
---    color = activeColor,
---    }
     app.setCurrentLayer(1, false) --make the 1st layer as current layer to ensure the filled box remain on 1st layer always
 
     -- adding the stroke for filled box
@@ -339,7 +325,8 @@ end
 end
 
 
-
+toggleMenuCmPercent = nill 
+toggleMenuFillEmpty = nill
 -- Function to toggle the boolean value of documentBasedAdjustment in the config file
 function toggleDocumentBasedAdjustment()
     local configFilePath = sourcePath .. "page_adjust_config.lua" -- Path to the config file
@@ -360,13 +347,14 @@ function toggleDocumentBasedAdjustment()
         if line:match("config.documentBasedAdjustment%s*=%s*(%a+)") then
             -- Toggle the boolean value
             local currentValue = line:match("config.documentBasedAdjustment%s*=%s*(%a+)")
+            --app.openDialog(currentValue, {[1] = "OK"})
             local newValue = (currentValue == "true") and "false" or "true"
             lines[i] = line:gsub(currentValue, newValue)
             updated = true
             if newValue == "true" then
-                toggleMessage = "% wise adjustment is activated, please restart the app"
+                toggleMessage = "Adjustment Type is now set to  [%-based]. Please restart the app"
             else
-                toggleMessage = "cm based adjustment is activated, please restart the app"
+                toggleMessage = "Adjustment Type is now set to [cm-based]. Please restart the app"
             end
             break
         end
@@ -406,9 +394,9 @@ function toggleWantFillEmptySpace()
             lines[i] = line:gsub(currentValue, newValue)
             updated = true
             if newValue == "true" then
-                toggleMessage = "Fill for Empty space is activated, please restart the app"
+                toggleMessage = "'Fill Empty Space' is now set [on]. Please restart the app"
             else
-                toggleMessage = "Fill for Empty space is deactivated, please restart the app"
+                toggleMessage = "'Fill Empty Space' is now set [Off]. Please restart the app"
             end
             break
         end
@@ -422,6 +410,50 @@ function toggleWantFillEmptySpace()
 -- Toggle complete message
     app.msgbox(toggleMessage, {[1] = "Yes", [2] = "No"}) --This works on older version of Xournalapp
     --app.openDialog(toggleMessage, {[1] = "OK"}) -- This is for newer versions of xournalapp
+end
+
+
+-- toggles the menu name for the two types of adjustments
+toggleMenuCmPercent = nill 
+toggleMenuFillEmpty = nill
+function toggleMenuNameBothAdjustment()
+    local configFilePath = sourcePath .. "page_adjust_config.lua" -- Path to the config file
+    local lines = {}
+
+    -- Read the config file
+    local file, err = io.open(configFilePath, "r")
+
+    -- Read all lines of the file into the lines table
+    for line in file:lines() do
+        table.insert(lines, line)
+    end
+    file:close()
+
+    -- Iterate through the lines to find and toggle the documentBasedAdjustment value
+    for i, line in ipairs(lines) do
+        if line:match("config.documentBasedAdjustment%s*=%s*(%a+)") then
+            -- Toggle the boolean value
+            local currentValueDocumentBasedAdjustment = line:match("config.documentBasedAdjustment%s*=%s*(%a+)")
+            -- For changing the menu based upon toggle state
+            if currentValueDocumentBasedAdjustment =="true" then
+                toggleMenuCmPercent = "Set 'Adjustment Type' to cm-based"
+            else
+                toggleMenuCmPercent = "Set 'Adjustment Type' to %-based"
+            end
+        end
+    end
+    for i, line in ipairs(lines) do
+        if line:match("config.wantFillEmptySpace%s*=%s*(%a+)") then
+            -- Toggle the boolean value
+            local currentValueWantFillEmptySpace = line:match("config.wantFillEmptySpace%s*=%s*(%a+)")
+            -- For changing the menu based upon toggle state
+            if currentValueWantFillEmptySpace =="true" then
+                toggleMenuFillEmpty = "Set 'Fill Empty Space' Off"
+            else
+                toggleMenuFillEmpty = "Set 'Fill Empty Space' On"
+            end
+        end
+    end
 end
 
 --This is a "Just Ready for service" code, not refined, code duplication can be removed, having not enough time.

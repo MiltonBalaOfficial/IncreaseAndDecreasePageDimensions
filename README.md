@@ -1,6 +1,6 @@
 # IncreaseAndDecreasePageDimensions
 
-Extend your page! Now you can increase/decrease the page dimensions for a single page or for all the pages. It also works for the document having pdf background.
+Extend your page! Now you can increase/decrease the page dimensions for a single page or for all the pages. It also works for the documents having pdf background.
 
 ## Installation Steps
 
@@ -23,12 +23,12 @@ Extend your page! Now you can increase/decrease the page dimensions for a single
 
 1. Easy to use, just click on the `icons` or `menus` in `plugin menu`.
 2. Some shortcuts are available as `Alt + 2,3,4,5`. You may change or add for the other menus if you want.
-3. If you want to increase the width or height by 100% instead of `cm based value, just click on the `Toggle Document Based Adjustment` menu or icon to activate/deactivate. You must restart the app  for using new functionality, if you want to activate the cm based adjustment just do the same.
-4. For the documents having pdf background, if the dimensions are increased then empty space is created. You can fill the space with a color as the pdf background color. To do so - 
+3. If you want to toggle between `%-based value` and `cm based value` for increasing the dimensions, just click on the `Set 'Adjustment Type' to (cm-based / %-based)` menu or icon. You must restart the app  for using new toggled type.
+4. For the documents having pdf background, if the dimensions are increased then empty space is created. You can fill the space with a color as the pdf background color. To do so  - 
   
-    (i) First, click on `Toggle Fill the empty space` menu or icon, a message will be shown, then restart the app. If you want to deactivate it, do the same process.
+    (i) First, click on `Set 'Fill Empty Space' (Off/on)` menu or icon to toggle between `Set 'Fill Empty Space' Off` and `Set 'Fill Empty Space' On`, a message will be shown, then restart the app.
     
-    (ii) Next, change the `pen` tool color as your desired color. (The plugin will pick the `pen` color to fill the empty space)
+    (ii) Next, change the `pen` tool color as your desired color. (The plugin will pick the `pen` color to fill the empty space) Use a `color picker` app to pick the color value from the pdf background for fine match.
 
     (iii) Then, increase the width or height as you want by clicking the icons for increasing or decreasing.
 
@@ -44,5 +44,7 @@ Currently Increase/decrease value is in points, you can change it to cm. To do s
 
 There is an extra file `IncreaseProportionally (you may try something new)` for getting space in all direction (will not work with the PDFs), you can give a try.
 
-## If anyone wants to support
+
+## Your support matters a lot
+### If anyone wants to support
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/miltonbala)
