@@ -1,90 +1,47 @@
+-- Declare global variables
 local shapes_dict, sep, sourcePath
+local widthInitial, heightInitial, workingLayer
+local toggleMenuCmPercent, toggleMenuFillEmpty
 
--- Register all Toolbar actions and initialize all UI stuff
+
+-- Function to initialize the UI
 function initUi()
-    -- Getting the source folder Path (The plugin folder-path)
-    sep = package.config:sub(1, 1) -- path separator depends on OS
+    sep = package.config:sub(1, 1) -- Determine OS-specific path separator
     sourcePath = debug.getinfo(1).source:match("@?(.*" .. sep .. ")")
 
-    updateSettings() -- load the config file
+    updateSettings() -- Load data from page_adjust_config.lua when the function is called
 
-    local actions = {{
-        menu = "Increase Right",
-        callback = "increaseSizeRight",
-        accelerator = "<Alt>2",
-        toolbarId = "increaseSizeRight",
-        iconName = "IncreaseDimRight"
-    }, {
-        menu = "Decrease Right",
-        callback = "decreaseSizeRight",
-        accelerator = "<Alt>3",
-        toolbarId = "decreaseSizeRight",
-        iconName = "DecreaseDimRight"
-    }, {
-        menu = "Increase Bottom",
-        callback = "increaseSizeDown",
-        accelerator = "<Alt>4",
-        toolbarId = "increaseSizeDown",
-        iconName = "IncreaseDimBottom"
-    }, {
-        menu = "Decrease Bottom",
-        callback = "decreaseSizeDown",
-        accelerator = "<Alt>5",
-        toolbarId = "decreaseSizeDown",
-        iconName = "DecreaseDimDown"
-    }, {
-        menu = "Increase Right All",
-        callback = "increaseSizeRightAll",
-        toolbarId = "increaseSizeRightAll",
-        iconName = "IncreaseDimRightAll"
-    }, {
-        menu = "Decrease Right All",
-        callback = "decreaseSizeRightAll",
-        toolbarId = "decreaseSizeRightAll",
-        iconName = "DecreaseDimRightAll"
-    }, {
-        menu = "Increase Bottom All",
-        callback = "increaseSizeDownAll",
-        toolbarId = "increaseSizeDownAll",
-        iconName = "IncreaseDimBottomAll"
-    }, {
-        menu = "Decrease Bottom All",
-        callback = "decreaseSizeDownAll",
-        toolbarId = "decreaseSizeDownAll",
-        iconName = "DecreaseDimDownAll"
-    }}
+    -- Define actions for toolbar and menu
+    local actions = {
+        {menu = "Increase Right", callback = "increaseSizeRight", accelerator = "<Alt>2", toolbarId = "increaseSizeRight", iconName = "IncreaseDimRight"},
+        {menu = "Decrease Right", callback = "decreaseSizeRight", accelerator = "<Alt>3", toolbarId = "decreaseSizeRight", iconName = "DecreaseDimRight"},
+        {menu = "Increase Bottom", callback = "increaseSizeDown", accelerator = "<Alt>4", toolbarId = "increaseSizeDown", iconName = "IncreaseDimBottom"},
+        {menu = "Decrease Bottom", callback = "decreaseSizeDown", accelerator = "<Alt>5", toolbarId = "decreaseSizeDown", iconName = "DecreaseDimDown"},
+        {menu = "Increase Right All", callback = "increaseSizeRightAll", toolbarId = "increaseSizeRightAll", iconName = "IncreaseDimRightAll"},
+        {menu = "Decrease Right All", callback = "decreaseSizeRightAll", toolbarId = "decreaseSizeRightAll", iconName = "DecreaseDimRightAll"},
+        {menu = "Increase Bottom All", callback = "increaseSizeDownAll", toolbarId = "increaseSizeDownAll", iconName = "IncreaseDimBottomAll"},
+        {menu = "Decrease Bottom All", callback = "decreaseSizeDownAll", toolbarId = "decreaseSizeDownAll", iconName = "DecreaseDimDownAll"},
+        {menu = "Toggle 'Adjustment Type' [%-based/cm-based]", callback = "toggleDocumentBasedAdjustment", toolbarId = "toggleDocumentBasedAdjustment", iconName = "TogglePercentage_cm"},
+        {menu = "Toggle 'Fill Empty Space' [ON/OFF]", callback = "toggleWantFillEmptySpace", toolbarId = "fillEmptySpace", iconName = "ToggleFillEmpty"}
+    }
 
+    -- Register UI actions
     for _, action in ipairs(actions) do
-        app.registerUi(action)
+        app.registerUi(action) -- Resister all the actions one by one
     end
-    app.registerUi({ -- For toggling Document Based Adjustment
-        menu = "Toggle 'Adjustment Type' [%-based/cm-based]",
-        callback = "toggleDocumentBasedAdjustment",
-        toolbarId = "toggleDocumentBasedAdjustment",
-        iconName = "TogglePercentage_cm"
-    })
-    app.registerUi({ -- For toggling Document Based Adjustment
-        menu = "Toggle 'Fill Empty Space' [ON/OFF]",    
-        callback = "toggleWantFillEmptySpace",
-        toolbarId = "fillEmptySpace",
-        iconName = "ToggleFillEmpty"
-    })
 end
 
--- Function to load the configuration
+
+-- Function to load page_adjust_config.lua file for data
 function loadConfig()
-    local configFilePath = sourcePath .. "page_adjust_config.lua" -- Path to the config file
-    local config = dofile(configFilePath) -- Execute the file and return the config table
-    return config -- the config file must have return config at the bottom.
+    local configFilePath = sourcePath .. "page_adjust_config.lua"
+    return dofile(configFilePath)
 end
 
 
--- Example of using the configuration
+-- Function to update settings from the page_adjust_config.lua file
 function updateSettings()
-    -- Load the configuration dynamically
     local config = loadConfig()
-
-    -- Access the configuration variables using the `config` table
     adjustmentStep = config.adjustmentStep
     useCentimeters = config.useCentimeters
     cmToPointFactor = config.cmToPointFactor
@@ -94,337 +51,200 @@ function updateSettings()
     wantFillEmptySpace = config.wantFillEmptySpace
 end
 
--- Function to get the step size for increasing the width
-local function getStepSizeIncreaseWidth(forAllPages)
-    local docStructure = app.getDocumentStructure()
 
-    -- Determine which pages to process
-    local pages
-    if forAllPages then
-        pages = docStructure["pages"] -- All pages
-    else
-        pages = {docStructure["pages"][docStructure["currentPage"]]} -- Current page only
-    end
+-- Function to calculate step size
+local function getStepSize(forAllPages, dimension, factorIncrease, factorDecrease)
+    local docStructure = app.getDocumentStructure()
+    local pages = forAllPages and docStructure["pages"] or {docStructure["pages"][docStructure["currentPage"]]}
 
     for _, page in ipairs(pages) do
-        local width = page["pageWidth"]
-
+        local dimValue = page[dimension]
         if useCentimeters then
-            -- Return the step size in cm if useCentimeters is true
             return adjustmentStep * cmToPointFactor
         elseif documentBasedAdjustment then
-            -- If documentBasedAdjustment is true, return the the step size as % of page dimension
-            return width * documentBasedAdjustmentFactorIncrease
+            return dimValue * (factorIncrease or factorDecrease)
         else
-            -- Otherwise, return the default step size
-            return adjustmentStep
-        end
-    end
-end
--- Function to get the step size for decreasing the width
-local function getStepSizeDecreaseWidth(forAllPages)
-    local docStructure = app.getDocumentStructure()
-
-    -- Determine which pages to process
-    local pages
-    if forAllPages then
-        pages = docStructure["pages"] -- All pages
-    else
-        pages = {docStructure["pages"][docStructure["currentPage"]]} -- Current page only
-    end
-
-    for _, page in ipairs(pages) do
-        local width = page["pageWidth"]
-
-        if useCentimeters then
-            -- Return the step size in cm if useCentimeters is true
-            return adjustmentStep * cmToPointFactor
-        elseif documentBasedAdjustment then
-            -- If documentBasedAdjustment is true, return the the step size as % of page dimension
-            return width * documentBasedAdjustmentFactorDecrease
-        else
-            -- Otherwise, return the default step size
-            return adjustmentStep
-        end
-    end
-end
--- Function to get the step size for increasing the width
-local function getStepSizeIncreaseHeight(forAllPages)
-    local docStructure = app.getDocumentStructure()
-
-    -- Determine which pages to process
-    local pages
-    if forAllPages then
-        pages = docStructure["pages"] -- All pages
-    else
-        pages = {docStructure["pages"][docStructure["currentPage"]]} -- Current page only
-    end
-
-    for _, page in ipairs(pages) do
-        local height = page["pageHeight"]
-
-        if useCentimeters then
-            -- Return the step size in cm if useCentimeters is true
-            return adjustmentStep * cmToPointFactor
-        elseif documentBasedAdjustment then
-            -- If documentBasedAdjustment is true, return the the step size as % of page dimension
-            return height * documentBasedAdjustmentFactorIncrease
-        else
-            -- Otherwise, return the default step size
-            return adjustmentStep
-        end
-    end
-end
--- Function to get the step size for decreasing the width
-local function getStepSizeDecreaseHeight(forAllPages)
-    local docStructure = app.getDocumentStructure()
-
-    -- Determine which pages to process
-    local pages
-    if forAllPages then
-        pages = docStructure["pages"] -- All pages
-    else
-        pages = {docStructure["pages"][docStructure["currentPage"]]} -- Current page only
-    end
-
-    for _, page in ipairs(pages) do
-        local height = page["pageHeight"]
-
-        if useCentimeters then
-            -- Return the step size in cm if useCentimeters is true
-            return adjustmentStep * cmToPointFactor
-        elseif documentBasedAdjustment then
-            -- If documentBasedAdjustment is true, return the the step size as % of page dimension
-            return height * documentBasedAdjustmentFactorDecrease
-        else
-            -- Otherwise, return the default step size
             return adjustmentStep
         end
     end
 end
 
--- Helper function to adjust the size of pages in the document
--- @param amountWidth: Change in page width
--- @param amountHeight: Change in page height
--- @param forAllPages: If true, apply the change to all pages; otherwise, only the current page
 
-function adjustPageSize(amountWidth, amountHeight, forAllPages, wantFill)
-    local docStructure = app.getDocumentStructure()
-
-    -- Determine which pages to process
-    local pages
-    if forAllPages then
-        pages = docStructure["pages"] -- All pages
-    else
-        pages = {docStructure["pages"][docStructure["currentPage"]]} -- Current page only
-    end
-
-    for p, page in ipairs(pages) do
-        local width = page["pageWidth"]
-        local height = page["pageHeight"]
-        if forAllPages then
-            app.setCurrentPage(p)
-        end -- Set page if processing all pages
-        if wantFill then
-            workingLayerInfo()
-            app.setPageSize(width + amountWidth, height + amountHeight)
-            fillEmptySpace()
-            else
-            app.setPageSize(width + amountWidth, height + amountHeight)
-            end 
-    end
-end
-
-
--- Individual action functions
-function increaseSizeRight()
-    adjustPageSize(getStepSizeIncreaseWidth(), 0, false, wantFillEmptySpace)
-end
-function decreaseSizeRight()
-    adjustPageSize(-getStepSizeDecreaseWidth(), 0, false, wantFillEmptySpace)
-end
-function increaseSizeDown()
-    adjustPageSize(0, getStepSizeIncreaseHeight(), false, wantFillEmptySpace)
-end
-function decreaseSizeDown()
-    adjustPageSize(0, -getStepSizeDecreaseHeight(), false, wantFillEmptySpace)
-end
-
--- All-pages action functions
-function increaseSizeRightAll()
-    adjustPageSize(getStepSizeIncreaseWidth(true), 0, true, wantFillEmptySpace)
-end
-function decreaseSizeRightAll()
-    adjustPageSize(-getStepSizeDecreaseWidth(true), 0, true, wantFillEmptySpace)
-end
-function increaseSizeDownAll()
-    adjustPageSize(0, getStepSizeIncreaseHeight(true), true, wantFillEmptySpace)
-end
-function decreaseSizeDownAll()
-    adjustPageSize(0, -getStepSizeDecreaseHeight(true), true, wantFillEmptySpace)
-end
-
--- Declare global variables
-widthInitial = nil
-heightInitial = nil
-workingLayer = nil
-
+--The function to get the initial layer information
 function workingLayerInfo()
+    -- Get the initial page structure and the current page
     local docStructureInitial = app.getDocumentStructure()
-    local pageInitial = docStructureInitial["pages"][docStructureInitial["currentPage"]] -- Get the initial page
-    workingLayer = pageInitial["currentLayer"] --Get the working layer, after inserting the filled box, have to make the layer current again
-
-    -- Get page dimensions before increasing
+    local pageInitial = docStructureInitial["pages"][docStructureInitial["currentPage"]]
+    
+    -- Set the working layer to the current layer of the page
+    workingLayer = pageInitial["currentLayer"]
+    
+    -- Store initial dimensions
     widthInitial = pageInitial["pageWidth"]
     heightInitial = pageInitial["pageHeight"]
 end
+    
 
--- Callback for inserting filled stroke over the empty space
+--Insert filled box and handle layers
 function fillEmptySpace()
     local docStructureFinal = app.getDocumentStructure()
-    local pageFinal = docStructureFinal["pages"][docStructureFinal["currentPage"]] -- Get the final page
-    -- Get page dimensions after increasing
+    local pageFinal = docStructureFinal["pages"][docStructureFinal["currentPage"]]
+    
+    -- Get final page dimensions after adjustment
     local widthFinal = pageFinal["pageWidth"]
     local heightFinal = pageFinal["pageHeight"]
     
-    local activeColor = app.getToolInfo("pen")["color"] --Take the color for the filled box from pen color
+    -- Get the active pen color for the filled strokes
+    local activeColor = app.getToolInfo("pen")["color"]
     
-    local filledBoxRight = nill
-if widthFinal > widthInitial then
-    filledBoxRight = { -- fill the empty space rightwards
-    x = {widthInitial, widthFinal, widthFinal, widthInitial, widthInitial},
-    y = {0, 0, heightFinal, heightFinal, 0},
-    width = 2, -- if you see any gap between two successive increase then increase the value
-    fill = 255,
-    tool = "pen",
-    color = activeColor,
-}
-end
-
-    local filledBoxBottom = nill
-if heightFinal > heightInitial then
-    filledBoxBottom = { -- fill the empty space rightwards
-    x = {0, widthFinal, widthFinal, 0, 0},
-    y = {heightInitial, heightInitial, heightFinal, heightFinal, heightInitial},
-    width = 2, -- if you see any gap between two successive increase then increase the value
-    fill = 255,
-    tool = "pen",
-    color = activeColor,
-    }
-end
-
-    app.setCurrentLayer(1, false) --make the 1st layer as current layer to ensure the filled box remain on 1st layer always
-
-    -- adding the stroke for filled box
-    if filledBoxRight and filledBoxBottom then
-        app.addStrokes { strokes = { filledBoxRight, filledBoxBottom, allowUndoRedoAction = "grouped" }}
-    elseif filledBoxBottom then
-        app.addStrokes { strokes = { filledBoxBottom, allowUndoRedoAction = "grouped" }}
-    elseif filledBoxRight then
-        app.addStrokes { strokes = { filledBoxRight, allowUndoRedoAction = "grouped" }}
+    -- Initialize the filled box strokes
+    local filledBoxRight = nil
+    local filledBoxBottom = nil
+    
+    -- Check if the width has increased and prepare a stroke for the right side
+    if widthFinal > widthInitial then -- If it is not checked then a line appears for the other dimension
+        filledBoxRight = {
+            x = {widthInitial, widthFinal, widthFinal, widthInitial, widthInitial},
+            y = {0, 0, heightFinal, heightFinal, 0},
+            width = 2,
+            fill = 255,
+            tool = "pen",
+            color = activeColor,
+        }
     end
 
-    app.refreshPage()
+    -- Check if the height has increased and prepare a stroke for the bottom side
+    if heightFinal > heightInitial then -- If it is not checked then a line appears for the other dimension
+        filledBoxBottom = {
+            x = {0, widthFinal, widthFinal, 0, 0},
+            y = {heightInitial, heightInitial, heightFinal, heightFinal, heightInitial},
+            width = 2,
+            fill = 255,
+            tool = "pen",
+            color = activeColor,
+        }
+    end
 
-    if workingLayer == 1 then -- If only one layer is present then create a layer and then set the new layer as current layer
+    -- Get the current layers count
+    local layerCount = #pageFinal["layers"]
+    
+    -- Set the current layer to layer 1 for inserting the fill box
+    app.setCurrentLayer(1, false)
+
+    -- Insert the filled box strokes into layer 1
+    if filledBoxRight and filledBoxBottom then
+        app.addStrokes { strokes = { filledBoxRight, filledBoxBottom }, allowUndoRedoAction = "grouped" }
+    elseif filledBoxBottom then
+        app.addStrokes { strokes = { filledBoxBottom }, allowUndoRedoAction = "grouped" }
+    elseif filledBoxRight then
+        app.addStrokes { strokes = { filledBoxRight }, allowUndoRedoAction = "grouped" }
+    end
+    
+    -- Create a new layer if only one layer exists
+    if layerCount == 1 then
+        -- Create a new layer and switch to it
         app.uiAction({action = "ACTION_NEW_LAYER" })
         app.setCurrentLayer(2, false)
     else
-        app.setCurrentLayer(workingLayer, false) --If more than one layer is present then the previously working layer become current layer again
+        -- Switch back to the previous working layer if there are multiple layers
+        app.setCurrentLayer(workingLayer, false)
     end
 
+    -- Refresh the page to apply the changes
+    app.refreshPage()
 end
 
 
-toggleMenuCmPercent = nill 
-toggleMenuFillEmpty = nill
--- Function to toggle the boolean value of documentBasedAdjustment in the config file
+-- Function to set new page size and fill if wanted (this is the main function)
+function adjustPageSize(amountWidth, amountHeight, forAllPages, wantFill, isIncrease)
+    local docStructure = app.getDocumentStructure()
+    local pages = forAllPages and docStructure["pages"] or {docStructure["pages"][docStructure["currentPage"]]}
+    
+    for p, page in ipairs(pages) do
+        local width, height = page["pageWidth"], page["pageHeight"]
+
+        if forAllPages then 
+            app.setCurrentPage(p) 
+        end
+
+        if wantFill then  -- if fill is wanted then layer information is extracted before filling the empty space
+            workingLayerInfo() 
+        end
+
+        app.setPageSize(width + amountWidth, height + amountHeight) 
+
+        if wantFill and isIncrease then 
+            fillEmptySpace() 
+        end
+    end
+end
+
+
+-- Functions for individual page adjustments
+function increaseSizeRight() 
+    adjustPageSize(getStepSize(false, "pageWidth", documentBasedAdjustmentFactorIncrease), 0, false, wantFillEmptySpace, true) 
+end
+function decreaseSizeRight() 
+    adjustPageSize(-getStepSize(false, "pageWidth", nil, documentBasedAdjustmentFactorDecrease), 0, false, wantFillEmptySpace, false) 
+end
+function increaseSizeDown() 
+    adjustPageSize(0, getStepSize(false, "pageHeight", documentBasedAdjustmentFactorIncrease), false, wantFillEmptySpace, true) 
+end
+function decreaseSizeDown() 
+    adjustPageSize(0, -getStepSize(false, "pageHeight", nil, documentBasedAdjustmentFactorDecrease), false, wantFillEmptySpace, false) 
+end
+
+-- Functions for all pages adjustments
+function increaseSizeRightAll() 
+    adjustPageSize(getStepSize(true, "pageWidth", documentBasedAdjustmentFactorIncrease), 0, true, wantFillEmptySpace, true) 
+end
+function decreaseSizeRightAll() 
+    adjustPageSize(-getStepSize(true, "pageWidth", nil, documentBasedAdjustmentFactorDecrease), 0, true, wantFillEmptySpace, false) 
+end
+function increaseSizeDownAll() 
+    adjustPageSize(0, getStepSize(true, "pageHeight", documentBasedAdjustmentFactorIncrease), true, wantFillEmptySpace, true) 
+end
+function decreaseSizeDownAll() 
+    adjustPageSize(0, -getStepSize(true, "pageHeight", nil, documentBasedAdjustmentFactorDecrease), true, wantFillEmptySpace, false) 
+end
+
+
+-- Function to handle toggles (Checks the config file for boolean value, based on the value it writes opposite value and at last call the function to load the file again)
+local function toggleSetting(settingName, onMessage, offMessage)
+    local configFilePath = sourcePath .. "page_adjust_config.lua"
+    local lines = {}
+
+    for line in io.lines(configFilePath) do
+        table.insert(lines, line)
+    end
+
+    for i, line in ipairs(lines) do
+        if line:match(settingName .. "%s*=%s*(%a+)") then
+            local currentValue = line:match(settingName .. "%s*=%s*(%a+)")
+            local newValue = (currentValue == "true") and "false" or "true"
+            lines[i] = line:gsub(currentValue, newValue)
+            -- Toggle complete message
+            app.msgbox(newValue == "true" and onMessage or offMessage, {[1] = "OK"})--This works on older version of Xournalapp
+            --app.openDialog(newValue == "true" and onMessage or offMessage, {[1] = "OK"}) -- This is for newer versions of xournalapp
+            break
+        end
+    end
+
+    local file = io.open(configFilePath, "w")
+    file:write(table.concat(lines, "\n") .. "\n")
+    file:close()
+    updateSettings()-- Load data from page_adjust_config.lua again after Toggle is completed, so that plugin can get new values
+end
+
+
+-- Toggling functions
 function toggleDocumentBasedAdjustment()
-    local configFilePath = sourcePath .. "page_adjust_config.lua" -- Path to the config file
-    local lines = {}
-
-    -- Read the config file
-    local file, err = io.open(configFilePath, "r")
-
-    -- Read all lines of the file into the lines table
-    for line in file:lines() do
-        table.insert(lines, line)
-    end
-    file:close()
-
-    -- Iterate through the lines to find and toggle the documentBasedAdjustment value
-    local updated = false
-    for i, line in ipairs(lines) do
-        if line:match("config.documentBasedAdjustment%s*=%s*(%a+)") then
-            -- Toggle the boolean value
-            local currentValue = line:match("config.documentBasedAdjustment%s*=%s*(%a+)")
-            --app.openDialog(currentValue, {[1] = "OK"})
-            local newValue = (currentValue == "true") and "false" or "true"
-            lines[i] = line:gsub(currentValue, newValue)
-            updated = true
-            if newValue == "true" then
-                toggleMessage = "Adjustment Type is now set to  [%-based]"
-            else
-                toggleMessage = "Adjustment Type is now set to [cm-based]"
-            end
-            break
-        end
-    end
-
-    -- Write the updated content back to the file
-    file, err = io.open(configFilePath, "w")
-    file:write(table.concat(lines, "\n") .. "\n")
-    file:close()
-
--- Toggle complete message
-    app.msgbox(toggleMessage, {[1] = "OK"})--This works on older version of Xournalapp
-    --app.openDialog(toggleMessage, {[1] = "OK"}) -- This is for newer versions of xournalapp
-    updateSettings() -- reload the config file
+    toggleSetting("config.documentBasedAdjustment", "Adjustment Type is now set to [%-based]", "Adjustment Type is now set to [cm-based]")
 end
 
--- Function to toggle the boolean value of wantFillEmptySpace in the config file
 function toggleWantFillEmptySpace()
-    local configFilePath = sourcePath .. "page_adjust_config.lua" -- Path to the config file
-    local lines = {}
-
-    -- Read the config file
-    local file, err = io.open(configFilePath, "r")
-
-    -- Read all lines of the file into the lines table
-    for line in file:lines() do
-        table.insert(lines, line)
-    end
-    file:close()
-
-    -- Iterate through the lines to find and toggle the wantFillEmptySpace value
-    local updated = false
-    for i, line in ipairs(lines) do
-        if line:match("config.wantFillEmptySpace%s*=%s*(%a+)") then
-            -- Toggle the boolean value
-            local currentValue = line:match("config.wantFillEmptySpace%s*=%s*(%a+)")
-            local newValue = (currentValue == "true") and "false" or "true"
-            lines[i] = line:gsub(currentValue, newValue)
-            updated = true
-            if newValue == "true" then
-                toggleMessage = "'Fill Empty Space' is now set [on]"
-            else
-                toggleMessage = "'Fill Empty Space' is now set [Off]"
-            end
-            break
-        end
-    end
-
-    -- Write the updated content back to the file
-    file, err = io.open(configFilePath, "w")
-    file:write(table.concat(lines, "\n") .. "\n")
-    file:close()
-
--- Toggle complete message
-    app.msgbox(toggleMessage, {[1] = "OK"}) --This works on older version of Xournalapp
-    --app.openDialog(toggleMessage, {[1] = "OK"}) -- This is for newer versions of xournalapp
-    updateSettings() -- reload the config file
+    toggleSetting("config.wantFillEmptySpace", "'Fill Empty Space' is now set [on]", "'Fill Empty Space' is now set [off]")
 end
+    
 
---This is a "Just Ready for service" code, not refined, code duplication can be removed, having not enough time.
---If anyone refine it, please share the code!
-
+--I am not a professional developer, so the code might not be fully optimized. I genuinely welcome any suggestions for improvement.
